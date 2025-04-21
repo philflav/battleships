@@ -5,9 +5,18 @@ import GameInfo from '../components/GameInfo';
 
 const BOARD_SIZE = 10;
 
+interface Ship {
+  name: string;
+  size: number;
+  positions: number[][];
+  hits: number;
+  color?: string;
+}
+
 interface PlayerState {
   playerBoard: number[][];
   opponentBoard: number[][];
+  ships: Ship[]; // Add ships array to PlayerState
   isMyTurn: boolean;
   mySunkShips: number;
   opponentSunkShips: number;
@@ -202,6 +211,7 @@ const HomePage: React.FC = () => {
   const createInitialPlayerState = (): PlayerState => ({
       playerBoard: Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0)),
       opponentBoard: Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0)),
+      ships: [], // Initialize with an empty ships array
       isMyTurn: false,
       mySunkShips: 0,
       opponentSunkShips: 0,
@@ -242,9 +252,10 @@ const HomePage: React.FC = () => {
             <div className="flex flex-col items-center">
                  <h2 className="text-2xl font-semibold mb-3 text-blue-300">Your Board</h2>
                 <Board 
-                    grid={gameState.playerBoard} 
+                    grid={gameState.playerBoard}
                     onCellClick={() => {}} // No action needed when clicking own board
-                    myBoard={true} 
+                    myBoard={true}
+                    ships={gameState.ships} // Pass player's ships for coloring
                 />
              </div>
 

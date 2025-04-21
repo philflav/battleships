@@ -15,6 +15,7 @@ interface Ship {
   size: number;
   positions: number[][];
   hits: number;
+  color?: string; // Add color property to Ship interface
 }
 
 interface Player {
@@ -35,11 +36,11 @@ interface Game {
 
 const games: { [key: string]: Game } = {};
 const shipsConfig = [
-  { name: 'Carrier', size: 5 },
-  { name: 'Battleship', size: 4 },
-  { name: 'Cruiser', size: 3 },
-  { name: 'Submarine', size: 3 },
-  { name: 'Destroyer', size: 2 },
+  { name: 'Carrier', size: 5, color: 'purple' },
+  { name: 'Battleship', size: 4, color: 'orange' },
+  { name: 'Cruiser', size: 3, color: 'green' },
+  { name: 'Submarine', size: 3, color: 'yellow' },
+  { name: 'Destroyer', size: 2, color: 'cyan' },
 ];
 const BOARD_SIZE = 10;
 
@@ -144,11 +145,13 @@ function getPlayerState(game: Game, playerId: string) {
         mySunkShips: opponent?.sunkShips ?? 0, // How many of the opponent's ships are sunk
         // How many of player's own ships are sunk
         opponentSunkShips: player.sunkShips,
+        // Player's ships (including positions and colors)
+        ships: player.ships,
         isMyTurn: game.status === 'playing' && game.playerOrder[game.currentPlayerIndex] === playerId,
         status: game.status,
         winner: game.winner,
-        message: game.status === 'waiting' ? 'Waiting for opponent...' : 
-                 game.status === 'finished' ? `Game Over! ${game.winner === playerId ? 'You win!' : 'You lose!'}` : 
+        message: game.status === 'waiting' ? 'Waiting for opponent...' :
+                 game.status === 'finished' ? `Game Over! ${game.winner === playerId ? 'You win!' : 'You lose!'}` :
                  (game.playerOrder[game.currentPlayerIndex] === playerId ? 'Your turn' : "Opponent's turn") // Use double quotes
     };
 }

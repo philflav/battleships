@@ -4,14 +4,23 @@ const BOARD_SIZE = 10;
 
 
 
+interface Ship {
+  name: string;
+  size: number;
+  positions: number[][];
+  hits: number;
+  color?: string;
+}
+
 interface BoardProps {
   grid: number[][]; // 0: empty, 1: ship, 2: hit, 3: miss
   onCellClick: (row: number, col: number) => void;
   myBoard: boolean; // Is this the player's own board?
   disabled?: boolean; // Disable clicks (e.g., not player's turn)
+  ships?: Ship[]; // Add ships prop for player's board
 }
 
-const Board: React.FC<BoardProps> = ({ grid, onCellClick, myBoard, disabled = false }) => {
+const Board: React.FC<BoardProps> = ({ grid, onCellClick, myBoard, disabled = false, ships }) => {
   
  
   const getCellClass = (cellValue: number, row: number, col: number): string => {
@@ -24,7 +33,7 @@ const Board: React.FC<BoardProps> = ({ grid, onCellClick, myBoard, disabled = fa
         cursorClass = 'cursor-default'; // No clicking on own board
       switch (cellValue) {
         case 1: // Ship part (not hit)
-          stateClass = 'bg-gray-500'; 
+          stateClass = 'bg-gray-500'; // Default background, will be overridden by inline style
           break;
         case 2: // Ship part (hit)
           stateClass = 'bg-red-600 text-white';
@@ -90,6 +99,11 @@ const Board: React.FC<BoardProps> = ({ grid, onCellClick, myBoard, disabled = fa
             <div
               key={`${rowIndex}-${colIndex}`}
               className={getCellClass(cell, rowIndex, colIndex)}
+              style={myBoard && cell === 1 ? {
+                backgroundColor: ships?.find(s =>
+                  s.positions.some(pos => pos[0] === rowIndex && pos[1] === colIndex)
+                )?.color
+              } : {}}
               onClick={() => {
                 // Only allow clicking on the opponent's board if it's not disabled and the cell hasn't been revealed
                 if (!myBoard && !disabled && cell === 0) { 
