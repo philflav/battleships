@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 import Board from '../components/Board';
 import GameInfo from '../components/GameInfo';
@@ -24,6 +24,13 @@ const HomePage: React.FC = () => {
   const [gameState, setGameState] = useState<PlayerState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  const hitSoundRef = useRef<HTMLAudioElement | null>(null);
+  const missSoundRef = useRef<HTMLAudioElement | null>(null);
+  const sinkingSoundRef = useRef<HTMLAudioElement | null>(null);
+  const prevOpponentBoardRef = useRef<number[][] | null>(null);
+  const prevMySunkShipsRef = useRef<number>(0);
+  const prevOpponentSunkShipsRef = useRef<number>(0);
 
   // Establish Socket connection
   useEffect(() => {
@@ -90,7 +97,68 @@ const HomePage: React.FC = () => {
     };
   }, []); // Runs only once on component mount
 
-  const handleJoinGame = () => {
+ // Load sounds and handle game state updates for sound playback
+ useEffect(() => {
+   hitSoundRef.current = new Audio('/assets/sounds/hit.mp3');
+   missSoundRef.current = new Audio('/assets/sounds/miss.mp3');
+   sinkingSoundRef.current = new Audio('/assets/sounds/sinking.mp3');
+
+   if (gameState) {
+     if (!prevOpponentBoardRef.current) {
+       // Initialize the previous board state and sunk ship counts on the first game state update
+       prevOpponentBoardRef.current = gameState.opponentBoard;
+       prevMySunkShipsRef.current = gameState.mySunkShips;
+       prevOpponentSunkShipsRef.current = gameState.opponentSunkShips;
+       return;
+     }
+
+     const prevBoard = prevOpponentBoardRef.current;
+     const currentBoard = gameState.opponentBoard;
+
+     // Check for changes in the opponent's board to play hit/miss sounds
+     for (let r = 0; r < BOARD_SIZE; r++) {
+       for (let c = 0; c < BOARD_SIZE; c++) {
+         if (prevBoard[r][c] === 0 && currentBoard[r][c] === 2) {
+           // Hit detected
+           console.log(`[pages/index.tsx:${80}] Hit detected at (${r}, ${c}). Playing hit sound.`);
+           hitSoundRef.current?.play();
+           setTimeout(() => {
+             hitSoundRef.current?.pause();
+             if (hitSoundRef.current) hitSoundRef.current.currentTime = 0;
+           }, 2000); // Stop after 2 seconds
+         } else if (prevBoard[r][c] === 0 && currentBoard[r][c] === 3) {
+           // Miss detected
+           console.log(`[pages/index.tsx:${80}] Miss detected at (${r}, ${c}). Playing miss sound.`);
+           missSoundRef.current?.play();
+           setTimeout(() => {
+             missSoundRef.current?.pause();
+             if (missSoundRef.current) missSoundRef.current.currentTime = 0;
+           }, 2000); // Stop after 2 seconds
+         }
+       }
+     }
+
+     // Check for sunk ships and play sinking sound with delay
+     if (gameState.mySunkShips > prevMySunkShipsRef.current || gameState.opponentSunkShips > prevOpponentSunkShipsRef.current) {
+        console.log(`[pages/index.tsx:${80}] Ship sunk detected. Playing sinking sound with delay.`);
+        setTimeout(() => {
+            sinkingSoundRef.current?.play();
+            setTimeout(() => {
+                sinkingSoundRef.current?.pause();
+                if (sinkingSoundRef.current) sinkingSoundRef.current.currentTime = 0;
+            }, 5000); // Stop sinking sound after 5 seconds
+        }, 2100); // Start sinking sound after 2.1 seconds (after hit/miss sound)
+     }
+
+
+     // Update the previous board state and sunk ship counts
+     prevOpponentBoardRef.current = currentBoard;
+     prevMySunkShipsRef.current = gameState.mySunkShips;
+     prevOpponentSunkShipsRef.current = gameState.opponentSunkShips;
+   }
+ }, [gameState]); // Run this effect whenever gameState changes
+
+ const handleJoinGame = () => {
     if (socket && inputGameId) {
       console.log(`Attempting to join game: ${inputGameId}`);
       setGameId(inputGameId);
