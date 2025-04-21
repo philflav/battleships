@@ -84,7 +84,7 @@ const Board: React.FC<BoardProps> = ({ grid, onCellClick, myBoard, disabled = fa
     };
   
     return (
-      <div className={`grid grid-cols-${BOARD_SIZE} gap-0.5 bg-gray-700 p-1 rounded shadow-md w-full`}>
+      <div className={`grid grid-cols-10 gap-0.5 bg-gray-700 p-1 rounded shadow-md w-full`}>
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <div
