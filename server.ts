@@ -15,7 +15,21 @@ interface Ship {
   size: number;
   positions: number[][];
   hits: number;
-  color?: string; // Add color property to Ship interface
+  color?: string;
+}
+
+interface PlayerState {
+  playerBoard: number[][];
+  opponentBoard: number[][];
+  ships: Ship[]; // Add ships array to PlayerState
+  isMyTurn: boolean;
+  mySunkShips: number;
+  opponentSunkShips: number;
+  status: 'waiting' | 'playing' | 'finished';
+  winner: string | null;
+  message: string;
+  shipSunk?: boolean; // Add flag for sunk ship
+  sunkShipName?: string | null; // Add sunk ship name
 }
 
 interface Player {
@@ -373,7 +387,13 @@ app.prepare().then(() => {
         // Notify both players about the update
         game.playerOrder.forEach(playerId => {
              if (game.players[playerId]) { // Ensure player exists before sending update
-                io.to(playerId).emit('update', getPlayerState(game, playerId));
+               const playerState = getPlayerState(game, playerId);
+               // Add shipSunk and sunkShipName only to the player who fired the shot if a ship was sunk
+               if (playerId === socket.id && shipSunk) {
+                   io.to(playerId).emit('update', { ...playerState, shipSunk: true, sunkShipName: sunkShipName });
+               } else {
+                   io.to(playerId).emit('update', playerState);
+               }
              }
         });
          if (game.status === 'finished') {
