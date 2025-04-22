@@ -280,24 +280,48 @@ const HomePage: React.FC = () => {
       {error && <p className="text-red-500 mb-4">{error}</p>}
 
       {!gameId || !gameState ? (
-        <div className="flex flex-col items-center gap-4 bg-gray-800 p-6 rounded-lg shadow-lg">
-          <input
-            type="text"
-            value={inputGameId}
-            onChange={(e) => setInputGameId(e.target.value.trim())}
-            placeholder="Enter Game ID"
-            className="px-4 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          />
-          <button
-            onClick={handleJoinGame}
-            disabled={!inputGameId || !isConnected}
-            className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 rounded text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
-          >
-            Join / Create Game
-          </button>
-           <p className="text-sm text-gray-400 mt-2">Enter any ID. If it exists, you'll join. If not, a new game is created.</p>
-        </div>
-      ) : (
+        <>
+          <div className="flex flex-col items-center gap-4 bg-gray-800 p-6 rounded-lg shadow-lg">
+            <input
+              type="text"
+              value={inputGameId}
+              onChange={(e) => setInputGameId(e.target.value.trim())}
+              placeholder="Enter Game ID"
+              className="px-4 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <button
+              onClick={handleJoinGame}
+              disabled={!inputGameId || !isConnected}
+              className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 rounded text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+            >
+              Join / Create Game
+            </button>
+            <p className="text-sm text-gray-400 mt-2">Enter any ID. If it exists, you'll join. If not, a new game is created.</p>
+          </div>
+
+          <div className="mt-8 p-6 bg-gray-800 rounded-lg shadow-lg w-full max-w-md text-center">
+              <h2 className="text-2xl font-semibold mb-4 text-cyan-400">How to Play</h2>
+              <p className="mb-3 text-gray-300">
+                  1. Enter a Game ID above and click "Join / Create Game". Share this ID with your opponent.
+              </p>
+              <p className="mb-3 text-gray-300">
+                  2. Wait for your opponent to join the same Game ID.
+              </p>
+              <p className="mb-3 text-gray-300">
+                  3. Once the game starts, you will see your board and your opponent's board. Your ships are automatically placed at the start of the game.
+              </p>
+              <p className="mb-3 text-gray-300">
+                  4. When it's your turn, click on a cell on the Opponent's Board to fire a shot.
+              </p>
+              <p className="mb-3 text-gray-300">
+                  5. A hit will be marked in red, and a miss in white.
+              </p>
+              <p className="mb-3 text-gray-300">
+                  6. Sink all of your opponent's ships to win the game!
+              </p>
+          </div>
+        </>
+       ) : (
         // Game Area and Legend
         <>
           <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row justify-around items-start gap-8">
