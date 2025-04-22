@@ -23,7 +23,16 @@ interface PlayerState {
   status: 'waiting' | 'playing' | 'finished';
   winner: string | null;
   message: string;
+  shipSunk?: boolean; // Add flag for sunk ship
+  sunkShipName?: string | null; // Add sunk ship name
+  opponentShips?: Ship[]; // Add opponent's ships for legend
 }
+
+// Extend Ship interface for opponent legend clarity
+interface OpponentShip extends Ship {
+    sunk: boolean;
+}
+
 
 const HomePage: React.FC = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -113,6 +122,15 @@ const HomePage: React.FC = () => {
    sinkingSoundRef.current = new Audio('/assets/sounds/sinking.mp3');
 
    if (gameState) {
+     // Stop all sounds before potentially playing a new one
+     hitSoundRef.current?.pause();
+     if (hitSoundRef.current) hitSoundRef.current.currentTime = 0;
+     missSoundRef.current?.pause();
+     if (missSoundRef.current) missSoundRef.current.currentTime = 0;
+     sinkingSoundRef.current?.pause();
+     if (sinkingSoundRef.current) sinkingSoundRef.current.currentTime = 0;
+
+
      if (!prevOpponentBoardRef.current) {
        // Initialize the previous board state and sunk ship counts on the first game state update
        prevOpponentBoardRef.current = gameState.opponentBoard;
@@ -121,47 +139,81 @@ const HomePage: React.FC = () => {
        return;
      }
 
-     const prevBoard = prevOpponentBoardRef.current;
-     const currentBoard = gameState.opponentBoard;
-
-     // Check for changes in the opponent's board to play hit/miss sounds
-     for (let r = 0; r < BOARD_SIZE; r++) {
-       for (let c = 0; c < BOARD_SIZE; c++) {
-         if (prevBoard[r][c] === 0 && currentBoard[r][c] === 2) {
-           // Hit detected
-           console.log(`[pages/index.tsx:${80}] Hit detected at (${r}, ${c}). Playing hit sound.`);
-           hitSoundRef.current?.play();
-           setTimeout(() => {
-             hitSoundRef.current?.pause();
-             if (hitSoundRef.current) hitSoundRef.current.currentTime = 0;
-           }, 2000); // Stop after 2 seconds
-         } else if (prevBoard[r][c] === 0 && currentBoard[r][c] === 3) {
-           // Miss detected
-           console.log(`[pages/index.tsx:${80}] Miss detected at (${r}, ${c}). Playing miss sound.`);
-           missSoundRef.current?.play();
-           setTimeout(() => {
-             missSoundRef.current?.pause();
-             if (missSoundRef.current) missSoundRef.current.currentTime = 0;
-           }, 2000); // Stop after 2 seconds
-         }
-       }
-     }
-
-     // Check for sunk ships and play sinking sound with delay
-     if (gameState.mySunkShips > prevMySunkShipsRef.current || gameState.opponentSunkShips > prevOpponentSunkShipsRef.current) {
-        console.log(`[pages/index.tsx:${80}] Ship sunk detected. Playing sinking sound with delay.`);
+     // Check if a ship was sunk by this update
+     if (gameState.shipSunk) {
+        console.log(`[pages/index.tsx:${80}] Ship sunk detected by flag. Playing sinking sound.`);
+        // Play sinking sound immediately or with a small delay
+        // Play sinking sound with a small delay
         setTimeout(() => {
-            sinkingSoundRef.current?.play();
-            setTimeout(() => {
-                sinkingSoundRef.current?.pause();
-                if (sinkingSoundRef.current) sinkingSoundRef.current.currentTime = 0;
-            }, 5000); // Stop sinking sound after 5 seconds
-        }, 2100); // Start sinking sound after 2.1 seconds (after hit/miss sound)
+            if (sinkingSoundRef.current) {
+                sinkingSoundRef.current.volume = 1; // Start at full volume
+                sinkingSoundRef.current.play();
+
+                // Start fade out after 3 seconds (5 seconds total - 2 seconds fade)
+                const fadeStartTime = 3000;
+                const fadeDuration = 2000;
+                const fadeInterval = 50; // Decrease volume every 50ms
+                const steps = fadeDuration / fadeInterval;
+                const volumeStep = 1 / steps;
+
+                setTimeout(() => {
+                    const fadeIntervalId = setInterval(() => {
+                        if (sinkingSoundRef.current) {
+                            sinkingSoundRef.current.volume = Math.max(0, sinkingSoundRef.current.volume - volumeStep);
+                            // Check if volume has reached 0
+                            if (sinkingSoundRef.current.volume === 0) {
+                                sinkingSoundRef.current.pause();
+                                sinkingSoundRef.current.currentTime = 0;
+                                clearInterval(fadeIntervalId);
+                            }
+                        } else {
+                            clearInterval(fadeIntervalId); // Clear interval if ref is null
+                        }
+                    }, fadeInterval);
+                }, fadeStartTime);
+
+                // Ensure sound stops after 5 seconds even if fade out is not perfect
+                setTimeout(() => {
+                    if (sinkingSoundRef.current) {
+                        sinkingSoundRef.current.pause();
+                        sinkingSoundRef.current.currentTime = 0;
+                    }
+                }, 5000); // Total playback duration
+            }
+        }, 100); // Small initial delay
+
+     } else {
+        // If no ship was sunk by this update, check for regular hits or misses
+        const prevBoard = prevOpponentBoardRef.current;
+        const currentBoard = gameState.opponentBoard;
+
+        // Check for changes in the opponent's board to play hit/miss sounds
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (prevBoard[r][c] === 0 && currentBoard[r][c] === 2) {
+              // Hit detected (and no ship sunk by this hit)
+              console.log(`[pages/index.tsx:${80}] Hit detected at (${r}, ${c}). Playing hit sound.`);
+              hitSoundRef.current?.play();
+              setTimeout(() => {
+                hitSoundRef.current?.pause();
+                if (hitSoundRef.current) hitSoundRef.current.currentTime = 0;
+              }, 2000); // Stop after 2 seconds
+            } else if (prevBoard[r][c] === 0 && currentBoard[r][c] === 3) {
+              // Miss detected
+              console.log(`[pages/index.tsx:${80}] Miss detected at (${r}, ${c}). Playing miss sound.`);
+              missSoundRef.current?.play();
+              setTimeout(() => {
+                missSoundRef.current?.pause();
+                if (missSoundRef.current) missSoundRef.current.currentTime = 0;
+              }, 2000); // Stop after 2 seconds
+            }
+          }
+        }
      }
 
 
      // Update the previous board state and sunk ship counts
-     prevOpponentBoardRef.current = currentBoard;
+     prevOpponentBoardRef.current = gameState.opponentBoard; // Use current gameState.opponentBoard
      prevMySunkShipsRef.current = gameState.mySunkShips;
      prevOpponentSunkShipsRef.current = gameState.opponentSunkShips;
    }
@@ -246,40 +298,85 @@ const HomePage: React.FC = () => {
            <p className="text-sm text-gray-400 mt-2">Enter any ID. If it exists, you'll join. If not, a new game is created.</p>
         </div>
       ) : (
-        // Game Area
-        <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row justify-around items-start gap-8">
-            {/* Player's Board */}      
-            <div className="flex flex-col items-center">
-                 <h2 className="text-2xl font-semibold mb-3 text-blue-300">Your Board</h2>
-                <Board 
-                    grid={gameState.playerBoard}
-                    onCellClick={() => {}} // No action needed when clicking own board
-                    myBoard={true}
-                    ships={gameState.ships} // Pass player's ships for coloring
-                />
-             </div>
+        // Game Area and Legend
+        <>
+          <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row justify-around items-start gap-8">
+              {/* Player's Board */}
+              <div className="flex flex-col items-center">
+                   <h2 className="text-2xl font-semibold mb-3 text-blue-300">Your Board</h2>
+                  <Board
+                      grid={gameState.playerBoard}
+                      onCellClick={() => {}} // No action needed when clicking own board
+                      myBoard={true}
+                      ships={gameState.ships} // Pass player's ships for coloring
+                  />
+               </div>
 
-            {/* Game Info / Controls */}      
-             <GameInfo 
-                gameState={gameState} 
-                onNewGame={handleNewGame} 
-                gameId={gameId}
-             />
+              {/* Game Info / Controls */}
+               <GameInfo
+                  gameState={gameState}
+                  onNewGame={handleNewGame}
+                  gameId={gameId}
+               />
 
-            {/* Opponent's Board */}      
-            <div className="flex flex-col items-center">
-                 <h2 className="text-2xl font-semibold mb-3 text-red-300">Opponent's Board</h2>
-                <Board 
-                    grid={gameState.opponentBoard} 
-                    onCellClick={handleFire} 
-                    myBoard={false} 
-                    disabled={!gameState.isMyTurn || gameState.status !== 'playing'}
-                />
-             </div>
-        </div>
-      )}
-    </div>
-  );
-};
+              {/* Opponent's Board */}
+              <div className="flex flex-col items-center">
+                   <h2 className="text-2xl font-semibold mb-3 text-red-300">Opponent's Board</h2>
+                  <Board
+                      grid={gameState.opponentBoard}
+                      onCellClick={handleFire}
+                      myBoard={false}
+                      disabled={!gameState.isMyTurn || gameState.status !== 'playing'}
+                  />
+               </div>
+          </div>
+
+         {/* Ship Legends Container */}
+         <div className="mt-8 w-full max-w-4xl mx-auto flex flex-col md:flex-row justify-around gap-6">
+            {/* Player's Ship Legend */}
+            {gameState?.ships && gameState.ships.length > 0 && (
+              <div className="p-4 bg-gray-800 rounded-lg shadow-lg flex-1">
+                <h3 className="text-xl font-semibold mb-4 text-blue-300 text-center">Your Ships</h3>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center">
+                  {gameState.ships.map((ship) => {
+                    const isSunk = ship.hits >= ship.size;
+                    const shipColor = isSunk ? '#884444' : (ship.color || 'gray'); // Dull red if sunk
+                    return (
+                      <div key={`player-${ship.name}`} className="flex items-center gap-2">
+                        <div
+                          className="w-5 h-5 rounded-sm border border-gray-600"
+                          style={{ backgroundColor: shipColor }}
+                        ></div>
+                        <span className={isSunk ? 'line-through text-gray-500' : ''}>{ship.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Opponent's Ship Legend */}
+            {gameState?.opponentShips && gameState.opponentShips.length > 0 && (
+              <div className="p-4 bg-gray-800 rounded-lg shadow-lg flex-1">
+                <h3 className="text-xl font-semibold mb-4 text-red-300 text-center">Opponent's Ships</h3>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center">
+                  {(gameState.opponentShips as OpponentShip[]).map((ship) => ( // Cast for type safety
+                    <div key={`opponent-${ship.name}`} className="flex items-center gap-2">
+                      {/* We don't show opponent ship colors, just status */}
+                      <div
+                        className={`w-5 h-5 rounded-sm border ${ship.sunk ? 'bg-red-800 border-red-600' : 'bg-gray-600 border-gray-500'}`} // Indicate sunk status visually
+                      ></div>
+                      <span className={ship.sunk ? 'line-through text-gray-500' : ''}>{ship.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+         </div>
+        </>
+       )}
+     </div>
+   );
+ };
 
 export default HomePage;
